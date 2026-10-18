@@ -1,0 +1,6 @@
+import { it,expect,vi } from 'vitest';
+import { constraints,capture } from '../src/capture';
+it('tenta constraints progressivas sem exigir 4K/60',()=>{const c=constraints('4K30 experimental','environment','');expect(c).toHaveLength(3);expect(c[0].width).toEqual({ideal:3840});expect(c[2]).toEqual({facingMode:{ideal:'environment'}});});
+it('recupera OverconstrainedError e mantém a seleção de câmera',async()=>{const stream={} as MediaStream;const get=vi.fn().mockRejectedValueOnce(new DOMException('unsupported','OverconstrainedError')).mockResolvedValueOnce(stream);expect(await capture(get,'1080p60','user','id',false)).toBe(stream);expect(get.mock.calls[1][0]).toMatchObject({video:{deviceId:{exact:'id'},frameRate:{ideal:30,max:30}},audio:false});});
+it('não repete pedidos após recusa de permissão',async()=>{const get=vi.fn().mockRejectedValue(new DOMException('denied','NotAllowedError'));await expect(capture(get,'720p30','user','',true)).rejects.toThrow('denied');expect(get).toHaveBeenCalledTimes(1);});
+it('esgota fallback e comunica falha',async()=>{const get=vi.fn().mockRejectedValue(new DOMException('unsupported','OverconstrainedError'));await expect(capture(get,'1080p30','user','',false)).rejects.toThrow();expect(get).toHaveBeenCalledTimes(3);});
